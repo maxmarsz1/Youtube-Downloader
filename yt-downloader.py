@@ -2,7 +2,7 @@ import pytube
 import requests
 import os
 import threading
-import pyglet
+# import pyglet
 import time
 from tkinter import filedialog, ttk, messagebox, font, Canvas, Entry, Button, Tk, StringVar
 from PIL import ImageTk, Image
@@ -120,9 +120,6 @@ class Downloader:
         ######################################################################################################
 
 
-        
-
-
         # self.file_size = 0
         # self.progress = 0
         # self.trace_info()
@@ -217,11 +214,11 @@ class Downloader:
             global file_size
             if mode == "AUDIO":
                 file_size = video.streams.filter(only_audio=True).first().filesize
-                video.streams.filter(only_audio=True).first().download(output_path=directory_path)
+                video.streams.filter(only_audio=True).first().download(output_path=self.directory_path)
                 print("Downloaded audio")
             elif mode == "VIDEO":
                 file_size = video.streams.filter(progressive=True).first().filesize
-                video.streams.filter(progressive=True).first().download(output_path=directory_path)
+                video.streams.filter(progressive=True).first().download(output_path=self.directory_path)
                 print("Downloaded video")
 
         except pytube.exceptions.VideoUnavailable:
