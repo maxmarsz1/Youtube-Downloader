@@ -116,7 +116,7 @@ class Downloader:
 
         self.canvas.create_rectangle(310, 540, 512, 560, outline="#ffffff")
         #511 max value
-        self.progressbar = self.canvas.create_rectangle(311, 541, 311, 559, fill="#ed1212")
+        self.progressbar = self.canvas.create_rectangle(311, 541, 311, 559, fill="#AD0000")
 
         self.progressText = self.canvas.create_text(410, 549, text="0%", fill="#ffffff", font=("Yu Gothic UI Light", 9, "bold"))
 
@@ -158,18 +158,27 @@ class Downloader:
         print("Pobieranie")
         print(link, choice, mode)
 
+        #Reseting progress bar
+        self.canvas.coords(self.progressbar, 311, 541, 311, 559)
+        self.canvas.itemconfigure(self.progressText, text="0%")
+        self.progress = 0
+
         #Checikng if provided link is valid
         try:
             if choice == "VIDEO":
                 # self.window.after(0, self.init_progress_window)
                 video = pytube.YouTube(link, on_progress_callback=self.progress_update, on_complete_callback=self.progress_complete)
                 self.d_video(video, mode)
+                messagebox.showinfo("Done", "Downloaded video!")
                 
             elif choice == "PLAYLIST":
                 video = pytube.Playlist(link)
+                self.playlist_length = len(video.video_urls)
+                self.downloaded_videos = 0
                 self.d_playlist(video, mode)
-        except pytube.exceptions.RegexMatchError:
-            messagebox.showinfo("Error", "Invalid link")
+                messagebox.showinfo("Done", "Downloaded playlist!")
+        except:
+            messagebox.showinfo("Error", "Invalid link, make sure you selected playlist/video")
         
         self.button["state"] = "normal"
 
@@ -189,8 +198,10 @@ class Downloader:
             if choice == "VIDEO":
                 video = pytube.YouTube(link)
                 
+                title = self.title_handler(video.title)
+
                 #Updating video info
-                self.canvas.itemconfigure(self.title, text=video.title)
+                self.canvas.itemconfigure(self.title, text=title)
                 self.canvas.itemconfigure(self.author, text=video.author)
 
                 #Thumbnail setting
@@ -202,12 +213,15 @@ class Downloader:
 
             elif choice == "PLAYLIST":
                 video = pytube.Playlist(link)
+                self.playlist_length = len(video.video_urls)
+
+                title = self.title_handler(video.title)
 
                 #Updating playlist info
-                self.canvas.itemconfigure(self.title, text=video.title)
-                self.canvas.itemconfigure(self.author, text=f"Videos: {len(video.video_urls)}")
+                self.canvas.itemconfigure(self.title, text=title)
+                self.canvas.itemconfigure(self.author, text=f"Videos: {self.playlist_length}")
 
-                self.canvas.itemconfigure(self.imageThumbnail, image=None)
+                self.canvas.itemconfigure(self.imageThumbnail, image="")
                 self.canvas.itemconfigure(self.textPlaylist, text="PLAYLIST")
                   
         except pytube.exceptions.RegexMatchError:
@@ -219,7 +233,7 @@ class Downloader:
         # self.progress_window
         self.progress = (self.file_size - bytes_remaining) / self.file_size * 100
         x1 = 311 + self.progress * 2
-        print(self.progress)
+        # print(self.progress)
         self.canvas.itemconfigure(self.progressText, text=f"{round(self.progress)}%")
         self.canvas.coords(self.progressbar, 311, 541, x1, 559)
 
@@ -227,12 +241,18 @@ class Downloader:
     def progress_complete(self, smth, file_path):
         self.canvas.coords(self.progressbar, 311, 541, 511, 559)
         self.canvas.itemconfigure(self.progressText, text="100%")
-        messagebox.showinfo("Done", "Downloaded!")
+
+
+    def progress_update_playlist(self):
+        self.progress = self.downloaded_videos / self.playlist_length * 100
+        x1 = 311 + self.progress * 2
+        # print(self.progress)
+        self.canvas.itemconfigure(self.progressText, text=f"{round(self.progress)}%")
+        self.canvas.coords(self.progressbar, 311, 541, x1, 559)
 
     #File browser
     def browseFiles(self):
-        global directory_path 
-        directory_path = filedialog.askdirectory(title = "Select a Folder")
+        self.directory_path = filedialog.askdirectory(title = "Select a Folder")
         
     #Downloading video
     def d_video(self, video, mode):
@@ -257,6 +277,8 @@ class Downloader:
 
         for video in playlist.videos:
             self.d_video(video, mode)
+            self.downloaded_videos += 1
+            self.progress_update_playlist()
             
     #Thumbnail downloader, %LOCALAPPDATA%/YouTube Downloader
     def download_thumbnail(self, url, path, name):
@@ -264,6 +286,11 @@ class Downloader:
         thumbnail = requests.get(thumbnail_link)
         with open(os.path.join(path, name), "wb") as file:
             file.write(thumbnail.content)
+
+    
+    def title_handler(self, title):
+        return(f"{title[:20]}...")
+
 
 
 if __name__ == "__main__":
