@@ -20,9 +20,13 @@ class Downloader:
 
         #Background img path
         self.bg_path = os.path.join(self.data_path, "bg.jpg")
+
+        #Icon path
+        self.icon_path = os.path.join(self.data_path, "icon.ico")
         
         #Downloading background img
         self.download_thumbnail("http://player69.xyz/img6969/bg.jpg", self.data_path, "bg.jpg")
+        self.download_thumbnail("http://player69.xyz/img6969/icon.ico", self.data_path, "icon.ico")
 
         #Path to thumbnail
         self.thumbnail_path = os.path.join(self.data_path, "thumb.png")
@@ -38,6 +42,7 @@ class Downloader:
         self.window.geometry("600x600")
         self.window.configure(bg="#222222")
         self.window.resizable(False, False) 
+        self.window.iconbitmap(self.icon_path)
 
         #Fonts
         self.titleFont = ("Yu Gothic UI Light", 30)
