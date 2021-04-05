@@ -4,7 +4,7 @@ import os
 import threading
 # import pyglet
 import time
-from tkinter import filedialog, ttk, messagebox, font, Canvas, Entry, Button, Tk, StringVar
+from tkinter import filedialog, ttk, messagebox, font, Canvas, Entry, Button, Tk, StringVar, Toplevel, HORIZONTAL
 from PIL import ImageTk, Image
 
 class Downloader:
@@ -16,6 +16,8 @@ class Downloader:
 
         #Current working directory
         self.directory_path = os.getcwd()
+
+        self.thumbnail = None
 
         #Background img path
         self.bg_path = os.path.join(self.data_path, "bg.jpg")
@@ -91,11 +93,11 @@ class Downloader:
         self.canvas.create_text(70, 320, text="DOWNLOAD MODE:", anchor='nw', font=self.mainFont, fill='#ffffff')
 
        
-        self.choiceCombo = ttk.Combobox(self.window, width=18, values=["VIDEO", "PLAYLIST"], state="readonly", foreground="#ffffff", background="#000000", font=self.mainFont, textvariable=self.choice_variable, style="custom.TCombobox")
+        self.choiceCombo = ttk.Combobox(self.window, width=18, values=["VIDEO", "PLAYLIST"], state="readonly", foreground="#ffffff", background="#000000", font=self.mainFont, textvariable=self.choice_variable)
         self.choiceCombo.set("VIDEO")
         self.choiceCombo.place(x=218, y=280)
 
-        self.modeCombo = ttk.Combobox(self.window, width=18, values=["AUDIO", "VIDEO"], state="readonly", foreground="#ffffff", font=self.mainFont, textvariable=self.mode_variable, style="custom.TCombobox")
+        self.modeCombo = ttk.Combobox(self.window, width=18, values=["AUDIO", "VIDEO"], state="readonly", foreground="#ffffff", font=self.mainFont, textvariable=self.mode_variable)
         self.modeCombo.set("AUDIO")
         self.modeCombo.place(x=218, y=320)
         
@@ -108,7 +110,7 @@ class Downloader:
         self.canvas.create_rectangle(149, 489, 295, 572, outline="#ffffff")
 
         self.textPlaylist = self.canvas.create_text(191, 517, text=None, anchor='nw', fill="#ffffff", font=self.main2Font)
-        self.imageThumbnail = self.canvas.create_image(150, 490, anchor='nw', image=None)
+        self.imageThumbnail = self.canvas.create_image(150, 490, anchor='nw', image=self.thumbnail)
 
         self.title = self.canvas.create_text(310, 490, text="TITLE", anchor='nw', fill='#ffffff', font=self.main2Font)
         self.author = self.canvas.create_text(310, 515, text="AUTHOR", anchor='nw', fill='#ffffff', font=self.authorFont)
@@ -120,9 +122,10 @@ class Downloader:
         ######################################################################################################
 
 
-        # self.file_size = 0
-        # self.progress = 0
-        # self.trace_info()
+        self.file_size = 0
+        self.progress = 0
+
+        #Tracing link changes
         tracing = threading.Thread(target=self.trace_info)
         tracing.start()
 
@@ -149,7 +152,8 @@ class Downloader:
         #Checikng if provided link is valid
         try:
             if choice == "VIDEO":
-                video = pytube.YouTube(link)
+                self.window.after(0, self.init_progress_window)
+                video = pytube.YouTube(link, on_progress_callback=self.progress_update)
                 self.d_video(video, mode)
                 
             elif choice == "PLAYLIST":
@@ -157,6 +161,16 @@ class Downloader:
                 self.d_playlist(video, mode)
         except pytube.exceptions.RegexMatchError:
             messagebox.showinfo("Error", "Invalid link")
+
+
+    def init_progress_window(self):
+        self.progress_window = Toplevel(self.window, width=300, height=69)
+        self.progress_window.title("Downloading")
+        self.progress_window.resizable(False, False)
+
+        self.progressbar = ttk.Progressbar(self.progress_window, length=250, mode="indeterminate", maximum=100, orient=HORIZONTAL).pack(padx=30, pady=20)
+        self.progressbar.start()
+        # self.progress_window.mainloop()
 
 
     def update_info_thread(self, a,b,c):
@@ -180,10 +194,10 @@ class Downloader:
                 self.canvas.itemconfigure(self.author, text=video.author)
 
                 #Thumbnail setting
-                self.canvas.itemconfigure(self.textPlaylist, text=None)
+                self.canvas.itemconfigure(self.textPlaylist, text="")
                 self.download_thumbnail(video.thumbnail_url, self.data_path, "thumb.png")
-                thumbnail = ImageTk.PhotoImage(Image.open(self.thumbnail_path).resize((144,81), Image.ANTIALIAS))
-                self.canvas.itemconfigure(self.imageThumbnail, image=thumbnail)
+                self.thumbnail = ImageTk.PhotoImage(Image.open(self.thumbnail_path).resize((144,81), Image.ANTIALIAS))
+                self.canvas.itemconfigure(self.imageThumbnail, image=self.thumbnail)
                     
 
             elif choice == "PLAYLIST":
@@ -200,6 +214,12 @@ class Downloader:
             print("Error")
             pass
 
+    def progress_update(self,stream, chunk, bytes_remaining):
+        # self.progress_window
+        self.progress = (self.file_size - bytes_remaining) / self.file_size * 100
+        print(self.progress)
+        self.progressbar['value'] = self.progress
+
 
     #File browser
     def browseFiles(self):
@@ -211,13 +231,13 @@ class Downloader:
     def d_video(self, video, mode):
         print(f"Video: {video.title}")
         try:
-            global file_size
+            self.file_size
             if mode == "AUDIO":
-                file_size = video.streams.filter(only_audio=True).first().filesize
+                self.file_size = video.streams.filter(only_audio=True).first().filesize
                 video.streams.filter(only_audio=True).first().download(output_path=self.directory_path)
                 print("Downloaded audio")
             elif mode == "VIDEO":
-                file_size = video.streams.filter(progressive=True).first().filesize
+                self.file_size = video.streams.filter(progressive=True).first().filesize
                 video.streams.filter(progressive=True).first().download(output_path=self.directory_path)
                 print("Downloaded video")
 
