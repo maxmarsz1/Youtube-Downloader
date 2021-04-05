@@ -2,7 +2,6 @@ import pytube
 import requests
 import os
 import threading
-# import pyglet
 import time
 from tkinter import filedialog, ttk, messagebox, font, Canvas, Entry, Button, Tk, StringVar, Toplevel, HORIZONTAL
 from PIL import ImageTk, Image
@@ -101,7 +100,7 @@ class Downloader:
         self.modeCombo.set("AUDIO")
         self.modeCombo.place(x=218, y=320)
         
-        self.button = Button(self.window, text="DOWNLOAD", width=14, height=1 , font = self.downloadFont, command=self.download, bg="#1c1c1c", fg="#ed1212")
+        self.button = Button(self.window, text="DOWNLOAD", width=14, height=1 , font = self.downloadFont, command=self.download_thread, bg="#1c1c1c", fg="#ed1212")
         self.button.place(x=218, y=370)
 
         self.canvas.create_text(240, 450, text="VIDEO DETAILS", anchor='nw', fill="#ffffff", font=self.main2Font)
@@ -114,6 +113,12 @@ class Downloader:
 
         self.title = self.canvas.create_text(310, 490, text="TITLE", anchor='nw', fill='#ffffff', font=self.main2Font)
         self.author = self.canvas.create_text(310, 515, text="AUTHOR", anchor='nw', fill='#ffffff', font=self.authorFont)
+
+        self.canvas.create_rectangle(310, 540, 512, 560, outline="#ffffff")
+        #511 max value
+        self.progressbar = self.canvas.create_rectangle(311, 541, 311, 559, fill="#ed1212")
+
+        self.progressText = self.canvas.create_text(410, 549, text="0%", fill="#ffffff", font=("Yu Gothic UI Light", 9, "bold"))
 
 
         self.canvas.create_text(520, 570, text="BY PIAYER69", anchor='nw', fill="#ffffff", font=self.authorFont)
@@ -131,7 +136,7 @@ class Downloader:
 
         self.window.mainloop()
 
-
+    #Tracking variables
     def trace_info(self):
         #Downloading info if link is valid
         self.link_variable.trace("w", self.update_info_thread)
@@ -139,10 +144,14 @@ class Downloader:
         self.choice_variable.trace("w", self.update_info_thread)
         time.sleep(1)
 
+    #Threading downloading
+    def download_thread(self):
+        threading.Thread(target=self.download).start()
 
     #On button click
     def download(self):
         #Getting all variables
+        self.button["state"] = "disabled"
         link = self.linkEntry.get()
         choice = self.choiceCombo.get()
         mode = self.modeCombo.get()
@@ -152,8 +161,8 @@ class Downloader:
         #Checikng if provided link is valid
         try:
             if choice == "VIDEO":
-                self.window.after(0, self.init_progress_window)
-                video = pytube.YouTube(link, on_progress_callback=self.progress_update)
+                # self.window.after(0, self.init_progress_window)
+                video = pytube.YouTube(link, on_progress_callback=self.progress_update, on_complete_callback=self.progress_complete)
                 self.d_video(video, mode)
                 
             elif choice == "PLAYLIST":
@@ -161,22 +170,13 @@ class Downloader:
                 self.d_playlist(video, mode)
         except pytube.exceptions.RegexMatchError:
             messagebox.showinfo("Error", "Invalid link")
+        
+        self.button["state"] = "normal"
 
-
-    def init_progress_window(self):
-        self.progress_window = Toplevel(self.window, width=300, height=69)
-        self.progress_window.title("Downloading")
-        self.progress_window.resizable(False, False)
-
-        self.progressbar = ttk.Progressbar(self.progress_window, length=250, mode="indeterminate", maximum=100, orient=HORIZONTAL).pack(padx=30, pady=20)
-        self.progressbar.start()
-        # self.progress_window.mainloop()
-
-
+    #Threading update_info()
     def update_info_thread(self, a,b,c):
         y = threading.Thread(target=self.update_info)
         y.start()
-
 
     #On linkEntry change trying to download video/playlist info
     def update_info(self):
@@ -214,19 +214,26 @@ class Downloader:
             print("Error")
             pass
 
-    def progress_update(self,stream, chunk, bytes_remaining):
+    #Calling on progress
+    def progress_update(self, stream, chunk, bytes_remaining):
         # self.progress_window
         self.progress = (self.file_size - bytes_remaining) / self.file_size * 100
+        x1 = 311 + self.progress * 2
         print(self.progress)
-        self.progressbar['value'] = self.progress
+        self.canvas.itemconfigure(self.progressText, text=f"{round(self.progress)}%")
+        self.canvas.coords(self.progressbar, 311, 541, x1, 559)
 
+    #Calling when downloaded
+    def progress_complete(self, smth, file_path):
+        self.canvas.coords(self.progressbar, 311, 541, 511, 559)
+        self.canvas.itemconfigure(self.progressText, text="100%")
+        messagebox.showinfo("Done", "Downloaded!")
 
     #File browser
     def browseFiles(self):
         global directory_path 
         directory_path = filedialog.askdirectory(title = "Select a Folder")
         
-
     #Downloading video
     def d_video(self, video, mode):
         print(f"Video: {video.title}")
@@ -244,7 +251,6 @@ class Downloader:
         except pytube.exceptions.VideoUnavailable:
                 print("UNAVAILABLE!!!")
 
-
     #Downloading playlist
     def d_playlist(self, playlist, mode):
         print(f"Playlist: {playlist.title}")
@@ -252,7 +258,6 @@ class Downloader:
         for video in playlist.videos:
             self.d_video(video, mode)
             
-
     #Thumbnail downloader, %LOCALAPPDATA%/YouTube Downloader
     def download_thumbnail(self, url, path, name):
         thumbnail_link = url
