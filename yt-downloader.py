@@ -3,7 +3,7 @@ import requests
 import os
 import threading
 import time
-from tkinter import filedialog, ttk, messagebox, font, Canvas, Entry, Button, Tk, StringVar, Toplevel, HORIZONTAL
+from tkinter import filedialog, ttk, messagebox, font, Canvas, Entry, Button, Tk, StringVar, Toplevel, HORIZONTAL, PhotoImage
 from PIL import ImageTk, Image
 
 class Downloader:
@@ -16,27 +16,29 @@ class Downloader:
         #Current working directory
         self.directory_path = os.getcwd()
 
-        self.thumbnail = None
-
         #Background img path
         self.bg_path = os.path.join(self.data_path, "bg.jpg")
+        if not os.path.isfile(self.bg_path):
+            self.download_thumbnail("http://player69.xyz/img6969/bg.jpg", self.data_path, "bg.jpg")
 
         #Icon path
         self.icon_path = os.path.join(self.data_path, "icon.ico")
-        
-        #Downloading background img
-        self.download_thumbnail("http://player69.xyz/img6969/bg.jpg", self.data_path, "bg.jpg")
-        self.download_thumbnail("http://player69.xyz/img6969/icon.ico", self.data_path, "icon.ico")
+        if not os.path.isfile(self.icon_path):
+            self.download_thumbnail("http://player69.xyz/img6969/icon.ico", self.data_path, "icon.ico")
 
+        #Clipboard path
+        self.clipboard_path = os.path.join(self.data_path, "clipboard.png")
+        if not os.path.isfile(self.clipboard_path):
+            self.download_thumbnail("http://player69.xyz/img6969/clipboard.png", self.data_path, "clipboard.png")
+        
         #Path to thumbnail
         self.thumbnail_path = os.path.join(self.data_path, "thumb.png")
+        self.thumbnail = None
 
 
         ####################################################################################################
         #START OF GUI
         #Initializing main self.window
-
-
         self.window = Tk()
         self.window.title("Youtube Downloader")
         self.window.geometry("600x600")
@@ -85,10 +87,15 @@ class Downloader:
 
         self.canvas.create_text(280, 140, text="LINK:", anchor='nw', fill='#ffffff', font=self.main2Font)
 
-        self.linkEntry = Entry(self.window, width=75, textvariable=self.link_variable, highlightthickness=0, bg="#1c1c1c", fg="#ffffff")
+        self.linkEntry = Entry(self.window, width=75, textvariable=self.link_variable, highlightthickness=0, bg="#1c1c1c", fg="#ff0000")
         self.linkEntry.configure(highlightbackground="gray", highlightcolor="gray")
         self.linkEntry.focus_force()
         self.linkEntry.place(x=70, y=170)
+
+        pasteImage = ImageTk.PhotoImage(Image.open(self.clipboard_path).resize((12, 12), Image.ANTIALIAS))
+
+        self.pasteButton = Button(self.window, width=15, height=15, command=self.paste, image=pasteImage, bg="#1c1c1c")
+        self.pasteButton.place(x=530, y=170)
 
         self.browseButton = Button(self.window, width=19, text="SELECT FOLDER...", font = self.mainFont, command=self.browseFiles, bg="#1c1c1c", fg="#ffffff")
         self.browseButton.place(x=218, y=220)
@@ -156,10 +163,15 @@ class Downloader:
     #On button click
     def download(self):
         #Getting all variables
-        self.button["state"] = "disabled"
         link = self.linkEntry.get()
         choice = self.choiceCombo.get()
         mode = self.modeCombo.get()
+
+        self.linkEntry["state"] = "disabled"
+        self.browseButton["state"] = "disabled"
+        self.modeCombo["state"] = "disabled"
+        self.choiceCombo["state"] = "disabled"
+        self.button["state"] = "disabled"
         print("Pobieranie")
         print(link, choice, mode)
 
@@ -171,7 +183,6 @@ class Downloader:
         #Checikng if provided link is valid
         try:
             if choice == "VIDEO":
-                # self.window.after(0, self.init_progress_window)
                 video = pytube.YouTube(link, on_progress_callback=self.progress_update, on_complete_callback=self.progress_complete)
                 self.d_video(video, mode)
                 messagebox.showinfo("Done", "Downloaded video!")
@@ -182,9 +193,15 @@ class Downloader:
                 self.downloaded_videos = 0
                 self.d_playlist(video, mode)
                 messagebox.showinfo("Done", "Downloaded playlist!")
+
+            self.clear()
         except:
             messagebox.showinfo("Error", "Invalid link, make sure you selected playlist/video")
         
+        self.linkEntry["state"] = "normal"
+        self.browseButton["state"] = "normal"
+        self.modeCombo["state"] = "readonly"
+        self.choiceCombo["state"] = "readonly"
         self.button["state"] = "normal"
 
     #Threading update_info()
@@ -230,15 +247,12 @@ class Downloader:
                 self.canvas.itemconfigure(self.textPlaylist, text="PLAYLIST")
                   
         except pytube.exceptions.RegexMatchError:
-            print("Error")
-            pass
+            print("Invalid link")
 
     #Calling on progress
     def progress_update(self, stream, chunk, bytes_remaining):
-        # self.progress_window
         self.progress = (self.file_size - bytes_remaining) / self.file_size * 100
         x1 = 311 + self.progress * 2
-        # print(self.progress)
         self.canvas.itemconfigure(self.progressText, text=f"{round(self.progress)}%")
         self.canvas.coords(self.progressbar, 311, 541, x1, 559)
 
@@ -247,11 +261,10 @@ class Downloader:
         self.canvas.coords(self.progressbar, 311, 541, 511, 559)
         self.canvas.itemconfigure(self.progressText, text="100%")
 
-
+    #Calling after every downloaded video while downloading playlist
     def progress_update_playlist(self):
         self.progress = self.downloaded_videos / self.playlist_length * 100
         x1 = 311 + self.progress * 2
-        # print(self.progress)
         self.canvas.itemconfigure(self.progressText, text=f"{round(self.progress)}%")
         self.canvas.coords(self.progressbar, 311, 541, x1, 559)
 
@@ -263,7 +276,6 @@ class Downloader:
     def d_video(self, video, mode):
         print(f"Video: {video.title}")
         try:
-            self.file_size
             if mode == "AUDIO":
                 self.file_size = video.streams.filter(only_audio=True).first().filesize
                 video.streams.filter(only_audio=True).first().download(output_path=self.directory_path)
@@ -292,9 +304,21 @@ class Downloader:
         with open(os.path.join(path, name), "wb") as file:
             file.write(thumbnail.content)
 
-    
+    #Clear link entry
+    def clear(self):
+        self.link_variable.set("")
+
+    #Paste button function
+    def paste(self):
+        clipboard = self.window.selection_get(selection="CLIPBOARD")
+        self.link_variable.set(clipboard)
+
+    #Handling titles if longer than 20
     def title_handler(self, title):
-        return(f"{title[:20]}...")
+        if len(title) > 20:
+            return(f"{title[:20]}...")
+        else:
+            return(title)
 
 
 
