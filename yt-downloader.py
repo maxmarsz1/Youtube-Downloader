@@ -19,17 +19,17 @@ class Downloader:
         #Background img path
         self.bg_path = os.path.join(self.data_path, "bg.jpg")
         if not os.path.isfile(self.bg_path):
-            self.download_thumbnail("http://player69.xyz/img6969/bg.jpg", self.data_path, "bg.jpg")
+            self.download_thumbnail("https://github.com/PIayer69/Youtube-Downloader/blob/main/bg.jpg?raw=true", self.data_path, "bg.jpg")
 
         #Icon path
         self.icon_path = os.path.join(self.data_path, "icon.ico")
         if not os.path.isfile(self.icon_path):
-            self.download_thumbnail("http://player69.xyz/img6969/icon.ico", self.data_path, "icon.ico")
+            self.download_thumbnail("https://raw.githubusercontent.com/PIayer69/Youtube-Downloader/main/icon.ico", self.data_path, "icon.ico")
 
         #Clipboard path
         self.clipboard_path = os.path.join(self.data_path, "clipboard.png")
         if not os.path.isfile(self.clipboard_path):
-            self.download_thumbnail("http://player69.xyz/img6969/clipboard.png", self.data_path, "clipboard.png")
+            self.download_thumbnail("https://github.com/PIayer69/Youtube-Downloader/blob/main/clipboard.png?raw=true", self.data_path, "clipboard.png")
         
         #Path to thumbnail
         self.thumbnail_path = os.path.join(self.data_path, "thumb.png")
