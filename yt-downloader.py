@@ -1,9 +1,9 @@
-import pytube
-import requests
+from pytube import YouTube, Playlist, exceptions
+from requests import get
 import os
-import threading
-import time
-from tkinter import filedialog, ttk, messagebox, font, Canvas, Entry, Button, Tk, StringVar, Toplevel, HORIZONTAL, PhotoImage
+from threading import Thread
+from time import sleep
+from tkinter import filedialog, ttk, messagebox, font, Canvas, Entry, Button, Tk, StringVar, Toplevel, HORIZONTAL
 from PIL import ImageTk, Image
 
 class Downloader:
@@ -143,7 +143,7 @@ class Downloader:
         self.progress = 0
 
         #Tracing link changes
-        tracing = threading.Thread(target=self.trace_info)
+        tracing = Thread(target=self.trace_info)
         tracing.start()
 
         self.window.mainloop()
@@ -154,11 +154,11 @@ class Downloader:
         self.link_variable.trace("w", self.update_info_thread)
         self.mode_variable.trace("w", self.update_info_thread)
         self.choice_variable.trace("w", self.update_info_thread)
-        time.sleep(1)
+        sleep(1)
 
     #Threading downloading
     def download_thread(self):
-        threading.Thread(target=self.download).start()
+        Thread(target=self.download).start()
 
     #On button click
     def download(self):
@@ -183,12 +183,12 @@ class Downloader:
         #Checikng if provided link is valid
         try:
             if choice == "VIDEO":
-                video = pytube.YouTube(link, on_progress_callback=self.progress_update, on_complete_callback=self.progress_complete)
+                video = YouTube(link, on_progress_callback=self.progress_update, on_complete_callback=self.progress_complete)
                 self.d_video(video, mode)
                 messagebox.showinfo("Done", "Downloaded video!")
                 
             elif choice == "PLAYLIST":
-                video = pytube.Playlist(link)
+                video = Playlist(link)
                 self.playlist_length = len(video.video_urls)
                 self.downloaded_videos = 0
                 self.d_playlist(video, mode)
@@ -206,7 +206,7 @@ class Downloader:
 
     #Threading update_info()
     def update_info_thread(self, a,b,c):
-        y = threading.Thread(target=self.update_info)
+        y = Thread(target=self.update_info)
         y.start()
 
     #On linkEntry change trying to download video/playlist info
@@ -218,7 +218,7 @@ class Downloader:
 
         try:
             if choice == "VIDEO":
-                video = pytube.YouTube(link)
+                video = YouTube(link)
                 
                 title = self.title_handler(video.title)
 
@@ -229,12 +229,12 @@ class Downloader:
                 #Thumbnail setting
                 self.canvas.itemconfigure(self.textPlaylist, text="")
                 self.download_thumbnail(video.thumbnail_url, self.data_path, "thumb.png")
-                self.thumbnail = ImageTk.PhotoImage(Image.open(self.thumbnail_path).resize((144,81), Image.ANTIALIAS))
+                self.thumbnail = ImageTk.PhotoImage(Image.open(self.thumbnail_path).crop((0,60,639,419)).resize((144,81), Image.ANTIALIAS))
                 self.canvas.itemconfigure(self.imageThumbnail, image=self.thumbnail)
                     
 
             elif choice == "PLAYLIST":
-                video = pytube.Playlist(link)
+                video = Playlist(link)
                 self.playlist_length = len(video.video_urls)
 
                 title = self.title_handler(video.title)
@@ -246,7 +246,7 @@ class Downloader:
                 self.canvas.itemconfigure(self.imageThumbnail, image="")
                 self.canvas.itemconfigure(self.textPlaylist, text="PLAYLIST")
                   
-        except pytube.exceptions.RegexMatchError:
+        except exceptions.RegexMatchError:
             print("Invalid link")
 
     #Calling on progress
@@ -285,7 +285,7 @@ class Downloader:
                 video.streams.filter(progressive=True).first().download(output_path=self.directory_path)
                 print("Downloaded video")
 
-        except pytube.exceptions.VideoUnavailable:
+        except exceptions.VideoUnavailable:
                 print("UNAVAILABLE!!!")
 
     #Downloading playlist
@@ -300,7 +300,7 @@ class Downloader:
     #Thumbnail downloader, %LOCALAPPDATA%/YouTube Downloader
     def download_thumbnail(self, url, path, name):
         thumbnail_link = url
-        thumbnail = requests.get(thumbnail_link)
+        thumbnail = get(thumbnail_link)
         with open(os.path.join(path, name), "wb") as file:
             file.write(thumbnail.content)
 
